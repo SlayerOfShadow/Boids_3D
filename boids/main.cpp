@@ -35,16 +35,23 @@ int main()
 
     glBindVertexArray(vao);
 
-    static constexpr GLuint VERTEX_ATTR_POSITION = 3;
-    static constexpr GLuint VERTEX_ATTR_COLOR    = 8;
+    static constexpr GLuint VERTEX_ATTR_POSITION  = 0;
+    static constexpr GLuint VERTEX_ATTR_COLOR     = 1;
+    static constexpr GLuint VERTEX_ATTR_TEXCOORDS = 2;
     glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
     glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
+    glEnableVertexAttribArray(VERTEX_ATTR_TEXCOORDS);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, position));
-    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, texCoords));
+    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, position));
+    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, normal));
+    glVertexAttribPointer(VERTEX_ATTR_TEXCOORDS, 2, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, texCoords));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
+
+    glGetUniformLocation(shader.id(), "position");
+    glGetUniformLocation(shader.id(), "normal");
+    glGetUniformLocation(shader.id(), "texCoords");
 
     // Application loop :
     ctx.update = [&]() {
