@@ -55,6 +55,7 @@ int main()
 
     // Application loop :
     ctx.update = [&]() {
+        shader.use();
         glm::mat4 ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
         glm::mat4 MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
         glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
