@@ -7,5 +7,5 @@ in vec2 vTexCoords; // Coordonnées de texture du sommet
 out vec4 fFragColor;
 
 void main() {
-    fFragColor = (normalize(vNormal_vs), 1);
+    fFragColor = vec4(normalize(vNormal_vs), 1.0);
 };
