@@ -5,11 +5,6 @@
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-struct Vertex2DColor {
-    glm::vec2 position;
-    glm::vec3 color;
-};
-
 int main()
 {
     auto ctx = p6::Context{{1280, 720, "Boids"}};
