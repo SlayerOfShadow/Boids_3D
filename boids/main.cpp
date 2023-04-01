@@ -62,7 +62,7 @@ int main()
 
         // => On utilise glDrawElements à la place de glDrawArrays
         // Cela indique à OpenGL qu'il doit utiliser l'IBO enregistré dans le VAO
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
         glBindVertexArray(0);
     };
