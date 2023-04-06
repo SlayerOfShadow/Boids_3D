@@ -1,8 +1,12 @@
 #include <p6/p6.h>
+#include <vcruntime.h>
+#include <vector>
 #include "../src-common/glimac/common.hpp"
 #include "../src-common/glimac/sphere_vertices.hpp"
 #include "glimac/common.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/fwd.hpp"
+#include "glm/gtc/random.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
 int main()
@@ -25,9 +29,14 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    const std::vector<glimac::ShapeVertex> vertices = glimac::sphere_vertices(1.f, 32, 16);
+    size_t                                        nb_sphere = 32;
+    std::vector<std::vector<glimac::ShapeVertex>> spheres;
+    for (size_t i = 0; i < nb_sphere; i++)
+    {
+        spheres.push_back(glimac::sphere_vertices(1.f, 32, 16));
+    }
 
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glimac::ShapeVertex), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, spheres.size() * sizeof(glimac::ShapeVertex), spheres.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -52,22 +61,42 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
+    std::vector<glm::vec3> random_axes;
+    for (size_t i = 0; i < nb_sphere; i++)
+    {
+        random_axes.push_back(glm::sphericalRand(60.0f));
+    }
+
     // Application loop :
     ctx.update = [&]() {
         shader.use();
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // EARTH
         glm::mat4 ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
         glm::mat4 MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
         glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
-
-        glClearColor(0.f, 0.f, 0.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUniformMatrix4fv(uMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(uMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(uNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        glDrawArrays(GL_TRIANGLES, 0, spheres[0].size());
+
+        // MOONS
+        for (size_t i = 1; i < nb_sphere; i++)
+        {
+            MVMatrix = glm::translate(glm::mat4{1.f}, {0.f, 0.f, -5.f});   // Translation
+            MVMatrix = glm::rotate(MVMatrix, ctx.time(), {0.f, 1.f, 0.f}); // Translation * Rotation
+            MVMatrix = glm::translate(MVMatrix, {-2.f, 0.f, 0.f});         // Translation * Rotation * Translation
+            MVMatrix = glm::scale(MVMatrix, glm::vec3{0.2f});              // Translation * Rotation * Translation * Scale
+            glUniformMatrix4fv(uMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+            glUniformMatrix4fv(uMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(uNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glDrawArrays(GL_TRIANGLES, 0, spheres[i].size());
+        }
 
         glBindVertexArray(0);
     };
