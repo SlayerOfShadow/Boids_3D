@@ -29,14 +29,10 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    size_t                                        nb_sphere = 32;
-    std::vector<std::vector<glimac::ShapeVertex>> spheres;
-    for (size_t i = 0; i < nb_sphere; i++)
-    {
-        spheres.push_back(glimac::sphere_vertices(1.f, 32, 16));
-    }
+    size_t                           nb_sphere = 32;
+    std::vector<glimac::ShapeVertex> sphere    = glimac::sphere_vertices(1.f, 32, 16);
 
-    glBufferData(GL_ARRAY_BUFFER, spheres.size() * sizeof(glimac::ShapeVertex), spheres.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sphere.size() * sizeof(glimac::ShapeVertex), sphere.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -83,19 +79,20 @@ int main()
         glUniformMatrix4fv(uNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, spheres[0].size());
+        glDrawArrays(GL_TRIANGLES, 0, sphere.size());
 
         // MOONS
         for (size_t i = 1; i < nb_sphere; i++)
         {
-            MVMatrix = glm::translate(glm::mat4{1.f}, {0.f, 0.f, -5.f});   // Translation
-            MVMatrix = glm::rotate(MVMatrix, ctx.time(), {0.f, 1.f, 0.f}); // Translation * Rotation
-            MVMatrix = glm::translate(MVMatrix, {-2.f, 0.f, 0.f});         // Translation * Rotation * Translation
-            MVMatrix = glm::scale(MVMatrix, glm::vec3{0.2f});              // Translation * Rotation * Translation * Scale
+            MVMatrix = glm::translate(glm::mat4{1.f}, {0.f, 0.f, -5.f});  // Translation
+            MVMatrix = glm::rotate(MVMatrix, ctx.time(), random_axes[i]); // Translation * Rotation
+            MVMatrix = glm::translate(MVMatrix, {-2.f, 0.f, 0.f});        // Translation * Rotation * Translation
+            MVMatrix = glm::scale(MVMatrix, glm::vec3{0.2f});             // Translation * Rotation * Translation * Scale
+
             glUniformMatrix4fv(uMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
             glUniformMatrix4fv(uMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
             glUniformMatrix4fv(uNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-            glDrawArrays(GL_TRIANGLES, 0, spheres[i].size());
+            glDrawArrays(GL_TRIANGLES, 0, sphere.size());
         }
 
         glBindVertexArray(0);
