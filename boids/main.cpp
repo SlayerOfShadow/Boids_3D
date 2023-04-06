@@ -11,8 +11,8 @@ int main()
     ctx.maximize_window();
 
     const p6::Shader shader = p6::load_shader(
-        "shaders/shader.vs.glsl",
-        "shaders/shader.fs.glsl"
+        "shaders/3D.vs.glsl",
+        "shaders/normals.fs.glsl"
     );
     shader.use();
 
@@ -25,7 +25,6 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    // => Tableau de sommets : un seul exemplaire de chaque sommet
     const std::vector<glimac::ShapeVertex> vertices = glimac::sphere_vertices(1.f, 32, 16);
 
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glimac::ShapeVertex), vertices.data(), GL_STATIC_DRAW);
@@ -60,6 +59,7 @@ int main()
         glm::mat4 MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
         glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
+        glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUniformMatrix4fv(uMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
