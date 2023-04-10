@@ -58,9 +58,11 @@ int main()
     glEnable(GL_DEPTH_TEST);
 
     std::vector<glm::vec3> random_axes;
+    std::vector<glm::vec3> start_positions;
     for (size_t i = 0; i < nb_sphere; i++)
     {
         random_axes.push_back(glm::sphericalRand(60.0f));
+        start_positions.push_back(glm::sphericalRand(2.0f));
     }
 
     // Application loop :
@@ -84,10 +86,10 @@ int main()
         // MOONS
         for (size_t i = 1; i < nb_sphere; i++)
         {
-            MVMatrix = glm::translate(glm::mat4{1.f}, {0.f, 0.f, -5.f});  // Translation
-            MVMatrix = glm::rotate(MVMatrix, ctx.time(), random_axes[i]); // Translation * Rotation
-            MVMatrix = glm::translate(MVMatrix, {-2.f, 0.f, 0.f});        // Translation * Rotation * Translation
-            MVMatrix = glm::scale(MVMatrix, glm::vec3{0.2f});             // Translation * Rotation * Translation * Scale
+            MVMatrix = glm::translate(glm::mat4{1.f}, {0.f, 0.f, -5.f});                                  // Translation
+            MVMatrix = glm::rotate(MVMatrix, ctx.time(), glm::cross(random_axes[i], start_positions[i])); // Translation * Rotation
+            MVMatrix = glm::translate(MVMatrix, start_positions[i]);                                      // Translation * Rotation * Translation
+            MVMatrix = glm::scale(MVMatrix, glm::vec3{0.2f});                                             // Translation * Rotation * Translation * Scale
 
             glUniformMatrix4fv(uMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
             glUniformMatrix4fv(uMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
