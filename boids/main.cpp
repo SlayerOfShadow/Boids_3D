@@ -3,6 +3,7 @@
 #include <vector>
 #include "../src-common/glimac/common.hpp"
 #include "../src-common/glimac/sphere_vertices.hpp"
+#include "TrackballCamera.hpp"
 #include "glimac/common.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/fwd.hpp"
@@ -125,10 +126,18 @@ int main()
         start_positions.push_back(glm::sphericalRand(2.0f));
     }
 
+    glm::mat4       ProjMatrix, MVMatrix, NormalMatrix;
+    TrackballCamera camera;
+
+    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
+    NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
     // Application loop :
     ctx.update = [&]() {
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        MVMatrix = camera.getViewMatrix();
 
         // EARTH
         earthProgram.m_Program.use();
@@ -136,10 +145,8 @@ int main()
         glUniform1i(earthProgram.uTexture1, 0);
         glUniform1i(earthProgram.uTexture2, 1);
 
-        glm::mat4 ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
-        glm::mat4 MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
-        glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
-        MVMatrix               = glm::rotate(MVMatrix, ctx.time(), {0, 1, 0});
+        MVMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+        MVMatrix = glm::rotate(MVMatrix, ctx.time(), {0, 1, 0});
 
         glUniformMatrix4fv(earthProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(earthProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -181,6 +188,19 @@ int main()
         glBindTexture(GL_TEXTURE_2D, 0); // débind sur l'unité GL_TEXTURE0
 
         glBindVertexArray(0);
+    };
+
+    ctx.mouse_pressed = [&camera](p6::MouseButton button) {
+        if (button.button == p6::Button::Left)
+        {
+            std::cout << "left";
+            camera.rotateLeft(5);
+        }
+        if (button.button == p6::Button::Right)
+        {
+            std::cout << "left";
+            camera.rotateLeft(-5);
+        }
     };
 
     // Start the update loop
