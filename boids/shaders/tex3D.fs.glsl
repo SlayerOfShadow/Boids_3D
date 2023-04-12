@@ -4,6 +4,8 @@ in vec2 vTexCoords;
 
 uniform sampler2D uTexture;
 
+out vec4 fFragColor;
+
 void main() {
-    fFragColor = vec3(texture(uTexture, vTexCoords));
+    fFragColor = vec4(vec3(texture(uTexture, vTexCoords)), 1);
 }
