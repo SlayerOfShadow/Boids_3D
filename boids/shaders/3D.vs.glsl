@@ -24,6 +24,7 @@ void main() {
     vPosition_vs = vec3(uMVMatrix * vertexPosition);
     vNormal_vs = vec3(uNormalMatrix * vertexNormal);
     vTexCoords = aVertexTexCoords;
+    vTexCoords.y = 1. - vTexCoords.y; // Mettre la texture à l'endroit (convention OpenGL et p6 différente)
 
     // Calcul de la position projetée
     gl_Position = uMVPMatrix * vertexPosition;
