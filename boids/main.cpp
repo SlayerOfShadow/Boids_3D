@@ -8,6 +8,7 @@
 #include "glm/fwd.hpp"
 #include "glm/gtc/random.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "img/src/Image.h"
 
 int main()
 {
@@ -16,13 +17,33 @@ int main()
 
     const p6::Shader shader = p6::load_shader(
         "shaders/3D.vs.glsl",
-        "shaders/normals.fs.glsl"
+        "shaders/tex3D.fs.glsl"
     );
     shader.use();
+
+    img::Image earth_image = p6::load_image_buffer("assets/textures/EarthMap.jpg");
+    img::Image moon_image  = p6::load_image_buffer("assets/textures/MoonMap.jpg");
+    GLuint     earth_texture;
+    GLuint     moon_texture;
+
+    glGenTextures(1, &earth_texture);
+    glBindTexture(GL_TEXTURE_2D, earth_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, earth_image.width(), earth_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, earth_image.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &moon_texture);
+    glBindTexture(GL_TEXTURE_2D, moon_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, moon_image.width(), moon_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, moon_image.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     GLuint uMVPMatrixLocation    = glGetUniformLocation(shader.id(), "uMVPMatrix");
     GLuint uMVMatrixLocation     = glGetUniformLocation(shader.id(), "uMVMatrix");
     GLuint uNormalMatrixLocation = glGetUniformLocation(shader.id(), "uNormalMatrix");
+    GLuint uTexture              = glGetUniformLocation(shader.id(), "uTexture");
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -72,6 +93,9 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // EARTH
+        glBindTexture(GL_TEXTURE_2D, earth_texture);
+        glUniform1i(uTexture, 0);
+
         glm::mat4 ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
         glm::mat4 MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
         glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
@@ -82,6 +106,11 @@ int main()
 
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, sphere.size());
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        glBindTexture(GL_TEXTURE_2D, moon_texture);
+        glUniform1i(uTexture, 0);
 
         // MOONS
         for (size_t i = 1; i < nb_sphere; i++)
@@ -97,6 +126,8 @@ int main()
             glDrawArrays(GL_TRIANGLES, 0, sphere.size());
         }
 
+        glBindTexture(GL_TEXTURE_2D, 0);
+
         glBindVertexArray(0);
     };
 
@@ -106,4 +137,5 @@ int main()
     // Cleanup once the window is closed
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+    glDeleteTextures(1, &earth_texture);
 }
