@@ -4,6 +4,7 @@
 #include <vector>
 #include "../src-common/glimac/common.hpp"
 #include "../src-common/glimac/sphere_vertices.hpp"
+#include "FreeflyCamera.hpp"
 #include "GLFW/glfw3.h"
 #include "TrackballCamera.hpp"
 #include "glimac/common.hpp"
@@ -122,10 +123,10 @@ int main()
 
     glm::mat4              ProjMatrix, MVMatrix, NormalMatrix;
     std::vector<glm::mat4> MV_transformations;
-    TrackballCamera        camera;
+    // TrackballCamera        t_camera;
+    FreeflyCamera f_camera;
 
     ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
-    MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
     NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
     MV_transformations.push_back(MVMatrix);
@@ -144,7 +145,8 @@ int main()
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        MV_transformations[0] = camera.getViewMatrix();
+        // MV_transformations[0] = t_camera.getViewMatrix();
+        MV_transformations[0] = f_camera.getViewMatrix();
 
         // EARTH
         earthProgram.m_Program.use();
@@ -198,33 +200,38 @@ int main()
 
         if (ctx.key_is_pressed(GLFW_KEY_A))
         {
-            camera.rotateLeft(3);
+            // t_camera.rotateLeft(1);
+            f_camera.moveLeft(0.1f);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_D))
         {
-            camera.rotateLeft(-3);
+            // t_camera.rotateLeft(-1);
+            f_camera.moveLeft(-0.1f);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_S))
         {
-            camera.rotateUp(3);
+            // t_camera.rotateUp(1);
+            f_camera.moveFront(-0.1f);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_W))
         {
-            camera.rotateUp(-3);
+            // t_camera.rotateUp(-1);
+            f_camera.moveFront(0.1f);
         }
+    };
 
-        if (ctx.key_is_pressed(GLFW_KEY_G))
-        {
-            camera.moveFront(3);
-        }
+    /*
+    ctx.mouse_scrolled = [&t_camera](p6::MouseScroll mouse_scroll) {
+        t_camera.moveFront(-mouse_scroll.dy);
+    };
+    */
 
-        if (ctx.key_is_pressed(GLFW_KEY_F))
-        {
-            camera.moveFront(-3);
-        }
+    ctx.mouse_dragged = [&f_camera](p6::MouseDrag mouse_drag) {
+        f_camera.rotateLeft(mouse_drag.delta.x * 100);
+        f_camera.rotateUp(-mouse_drag.delta.y * 100);
     };
 
     // Start the update loop

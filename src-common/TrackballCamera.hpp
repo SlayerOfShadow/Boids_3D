@@ -1,7 +1,4 @@
 #include "glm/ext/matrix_transform.hpp"
-#include "glm/fwd.hpp"
-#include "glm/gtc/random.hpp"
-#include "glm/gtc/type_ptr.hpp"
 
 class TrackballCamera {
 private:
@@ -11,7 +8,7 @@ private:
 
 public:
     TrackballCamera()
-        : m_Distance(5.f), m_AngleX(0.f), m_AngleY(0.f){};
+        : m_Distance(0.f), m_AngleX(0.f), m_AngleY(0.f){};
     void      moveFront(float delta);
     void      rotateLeft(float degrees);
     void      rotateUp(float degrees);
