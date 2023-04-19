@@ -1,8 +1,10 @@
 #include <p6/p6.h>
+#include <stdio.h>
 #include <vcruntime.h>
 #include <vector>
 #include "../src-common/glimac/common.hpp"
 #include "../src-common/glimac/sphere_vertices.hpp"
+#include "GLFW/glfw3.h"
 #include "TrackballCamera.hpp"
 #include "glimac/common.hpp"
 #include "glm/ext/matrix_transform.hpp"
@@ -118,26 +120,31 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
+    glm::mat4              ProjMatrix, MVMatrix, NormalMatrix;
+    std::vector<glm::mat4> MV_transformations;
+    TrackballCamera        camera;
+
+    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
+    MVMatrix     = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+    NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
+    MV_transformations.push_back(MVMatrix);
+
     std::vector<glm::vec3> random_axes;
     std::vector<glm::vec3> start_positions;
     for (size_t i = 0; i < nb_sphere; i++)
     {
         random_axes.push_back(glm::sphericalRand(60.0f));
         start_positions.push_back(glm::sphericalRand(2.0f));
+        MV_transformations.push_back(MVMatrix);
     }
-
-    glm::mat4       ProjMatrix, MVMatrix, NormalMatrix;
-    TrackballCamera camera;
-
-    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
-    NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
     // Application loop :
     ctx.update = [&]() {
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        MVMatrix = camera.getViewMatrix();
+        MV_transformations[0] = camera.getViewMatrix();
 
         // EARTH
         earthProgram.m_Program.use();
@@ -145,11 +152,10 @@ int main()
         glUniform1i(earthProgram.uTexture1, 0);
         glUniform1i(earthProgram.uTexture2, 1);
 
-        MVMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
-        MVMatrix = glm::rotate(MVMatrix, ctx.time(), {0, 1, 0});
+        MV_transformations[0] = glm::rotate(MV_transformations[0], ctx.time(), {0, 1, 0});
 
-        glUniformMatrix4fv(earthProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(earthProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+        glUniformMatrix4fv(earthProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
+        glUniformMatrix4fv(earthProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
         glUniformMatrix4fv(earthProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
         glActiveTexture(GL_TEXTURE0);
@@ -172,13 +178,12 @@ int main()
 
         for (size_t i = 1; i < nb_sphere; i++)
         {
-            MVMatrix = glm::translate(glm::mat4{1.f}, {0.f, 0.f, -5.f});                                  // Translation
-            MVMatrix = glm::rotate(MVMatrix, ctx.time(), glm::cross(random_axes[i], start_positions[i])); // Translation * Rotation
-            MVMatrix = glm::translate(MVMatrix, start_positions[i]);                                      // Translation * Rotation * Translation
-            MVMatrix = glm::scale(MVMatrix, glm::vec3{0.2f});                                             // Translation * Rotation * Translation * Scale
+            MV_transformations[i] = glm::rotate(MV_transformations[0], ctx.time(), glm::cross(random_axes[i], start_positions[i])); // Translation * Rotation
+            MV_transformations[i] = glm::translate(MV_transformations[i], start_positions[i]);                                      // Translation * Rotation * Translation
+            MV_transformations[i] = glm::scale(MV_transformations[i], glm::vec3{0.2f});                                             // Translation * Rotation * Translation * Scale
 
-            glUniformMatrix4fv(moonProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-            glUniformMatrix4fv(moonProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(moonProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i]));
+            glUniformMatrix4fv(moonProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i]));
             glUniformMatrix4fv(moonProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
             glDrawArrays(GL_TRIANGLES, 0, sphere.size());
@@ -188,18 +193,37 @@ int main()
         glBindTexture(GL_TEXTURE_2D, 0); // débind sur l'unité GL_TEXTURE0
 
         glBindVertexArray(0);
-    };
 
-    ctx.mouse_pressed = [&camera](p6::MouseButton button) {
-        if (button.button == p6::Button::Left)
+        // INPUTS
+
+        if (ctx.key_is_pressed(GLFW_KEY_A))
         {
-            std::cout << "left";
-            camera.rotateLeft(5);
+            camera.rotateLeft(3);
         }
-        if (button.button == p6::Button::Right)
+
+        if (ctx.key_is_pressed(GLFW_KEY_D))
         {
-            std::cout << "left";
-            camera.rotateLeft(-5);
+            camera.rotateLeft(-3);
+        }
+
+        if (ctx.key_is_pressed(GLFW_KEY_S))
+        {
+            camera.rotateUp(3);
+        }
+
+        if (ctx.key_is_pressed(GLFW_KEY_W))
+        {
+            camera.rotateUp(-3);
+        }
+
+        if (ctx.key_is_pressed(GLFW_KEY_G))
+        {
+            camera.moveFront(3);
+        }
+
+        if (ctx.key_is_pressed(GLFW_KEY_F))
+        {
+            camera.moveFront(-3);
         }
     };
 
