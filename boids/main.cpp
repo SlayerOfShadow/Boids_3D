@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <vcruntime.h>
 #include <vector>
+#include "../src-common/boid.hpp"
 #include "../src-common/glimac/common.hpp"
 #include "../src-common/glimac/sphere_vertices.hpp"
 #include "FreeflyCamera.hpp"
@@ -14,7 +15,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "img/src/Image.h"
 
-struct EarthProgram {
+struct BoidProgram {
     p6::Shader m_Program;
 
     GLuint uMVPMatrix;
@@ -23,7 +24,7 @@ struct EarthProgram {
     GLuint uTexture1;
     GLuint uTexture2;
 
-    EarthProgram()
+    BoidProgram()
         : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/multiTex3D.fs.glsl")}
     {
         uMVPMatrix    = glGetUniformLocation(m_Program.id(), "uMVPMatrix");
@@ -34,49 +35,30 @@ struct EarthProgram {
     }
 };
 
-struct MoonProgram {
-    p6::Shader m_Program;
+glm::vec3 random_vec3(float min, float max)
+{
+    static std::random_device                    rd;
+    static std::mt19937                          gen(rd());
+    static std::uniform_real_distribution<float> dist(min, max);
 
-    GLuint uMVPMatrix;
-    GLuint uMVMatrix;
-    GLuint uNormalMatrix;
-    GLuint uTexture;
-
-    MoonProgram()
-        : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/tex3D.fs.glsl")}
-    {
-        uMVPMatrix    = glGetUniformLocation(m_Program.id(), "uMVPMatrix");
-        uMVMatrix     = glGetUniformLocation(m_Program.id(), "uMVMatrix");
-        uNormalMatrix = glGetUniformLocation(m_Program.id(), "uNormalMatrix");
-        uTexture      = glGetUniformLocation(m_Program.id(), "uTexture");
-    }
-};
+    return glm::vec3(dist(gen), dist(gen), 0);
+}
 
 int main()
 {
-    auto ctx = p6::Context{{1280, 720, "Boids"}};
+    auto ctx = p6::Context{{1280, 720, "Boids 3D"}};
     ctx.maximize_window();
 
-    EarthProgram earthProgram{};
-    MoonProgram  moonProgram{};
+    BoidProgram boidProgram{};
 
     img::Image earth_image = p6::load_image_buffer("assets/textures/EarthMap.jpg");
-    img::Image moon_image  = p6::load_image_buffer("assets/textures/MoonMap.jpg");
     img::Image cloud_image = p6::load_image_buffer("assets/textures/CloudMap.jpg");
     GLuint     earth_texture;
-    GLuint     moon_texture;
     GLuint     cloud_texture;
 
     glGenTextures(1, &earth_texture);
     glBindTexture(GL_TEXTURE_2D, earth_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, earth_image.width(), earth_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, earth_image.data());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glGenTextures(1, &moon_texture);
-    glBindTexture(GL_TEXTURE_2D, moon_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, moon_image.width(), moon_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, moon_image.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -93,10 +75,14 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    size_t                           nb_sphere = 32;
-    std::vector<glimac::ShapeVertex> sphere    = glimac::sphere_vertices(1.f, 32, 16);
+    std::vector<Boid>                boids;
+    size_t                           nb_boids      = 5;
+    float                            boid_size     = 0.5f;
+    float                            boid_speed    = 1.0f;
+    float                            wall_distance = 35.0f;
+    std::vector<glimac::ShapeVertex> boid_shape    = glimac::sphere_vertices(1.f, 32, 16);
 
-    glBufferData(GL_ARRAY_BUFFER, sphere.size() * sizeof(glimac::ShapeVertex), sphere.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, boid_shape.size() * sizeof(glimac::ShapeVertex), boid_shape.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -123,20 +109,16 @@ int main()
 
     glm::mat4              ProjMatrix, MVMatrix, NormalMatrix;
     std::vector<glm::mat4> MV_transformations;
-    // TrackballCamera        t_camera;
-    FreeflyCamera f_camera;
+    FreeflyCamera          f_camera;
 
     ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
     NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
     MV_transformations.push_back(MVMatrix);
 
-    std::vector<glm::vec3> random_axes;
-    std::vector<glm::vec3> start_positions;
-    for (size_t i = 0; i < nb_sphere; i++)
+    for (size_t i = 0; i < nb_boids; i++)
     {
-        random_axes.push_back(glm::sphericalRand(60.0f));
-        start_positions.push_back(glm::sphericalRand(2.0f));
+        boids.push_back(Boid(boid_size, boid_speed, random_vec3(-3.0f, 3.0f), glm::vec3(0, 0, 0)));
         MV_transformations.push_back(MVMatrix);
     }
 
@@ -145,20 +127,12 @@ int main()
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // MV_transformations[0] = t_camera.getViewMatrix();
         MV_transformations[0] = f_camera.getViewMatrix();
 
-        // EARTH
-        earthProgram.m_Program.use();
+        boidProgram.m_Program.use();
 
-        glUniform1i(earthProgram.uTexture1, 0);
-        glUniform1i(earthProgram.uTexture2, 1);
-
-        MV_transformations[0] = glm::rotate(MV_transformations[0], ctx.time(), {0, 1, 0});
-
-        glUniformMatrix4fv(earthProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
-        glUniformMatrix4fv(earthProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
-        glUniformMatrix4fv(earthProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniform1i(boidProgram.uTexture1, 0);
+        glUniform1i(boidProgram.uTexture2, 1);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, earth_texture); // la texture earth_texture est bindée sur l'unité GL_TEXTURE0
@@ -166,68 +140,40 @@ int main()
         glBindTexture(GL_TEXTURE_2D, cloud_texture); // la texture cloud_texture est bindée sur l'unité GL_TEXTURE1
 
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, sphere.size());
 
-        // MOONS
-        moonProgram.m_Program.use();
-
-        glUniform1i(moonProgram.uTexture, 0);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, moon_texture); // la texture moon_texture est bindée sur l'unité GL_TEXTURE0
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, 0); // débind sur l'unité GL_TEXTURE1
-
-        for (size_t i = 1; i < nb_sphere; i++)
+        for (size_t i = 0; i < nb_boids; i++)
         {
-            MV_transformations[i] = glm::rotate(MV_transformations[0], ctx.time(), glm::cross(random_axes[i], start_positions[i])); // Translation * Rotation
-            MV_transformations[i] = glm::translate(MV_transformations[i], start_positions[i]);                                      // Translation * Rotation * Translation
-            MV_transformations[i] = glm::scale(MV_transformations[i], glm::vec3{0.2f});                                             // Translation * Rotation * Translation * Scale
+            MV_transformations[i + 1] = glm::translate(MV_transformations[0], boids[i].get_position());
+            MV_transformations[i + 1] = glm::scale(MV_transformations[i + 1], glm::vec3(boid_size));
 
-            glUniformMatrix4fv(moonProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i]));
-            glUniformMatrix4fv(moonProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i]));
-            glUniformMatrix4fv(moonProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glUniformMatrix4fv(boidProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
+            glUniformMatrix4fv(boidProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
+            glUniformMatrix4fv(boidProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
-            glDrawArrays(GL_TRIANGLES, 0, sphere.size());
+            glDrawArrays(GL_TRIANGLES, 0, boid_shape.size());
         }
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, 0); // débind sur l'unité GL_TEXTURE0
-
-        glBindVertexArray(0);
-
         // INPUTS
-
         if (ctx.key_is_pressed(GLFW_KEY_A))
         {
-            // t_camera.rotateLeft(1);
             f_camera.moveLeft(0.1f);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_D))
         {
-            // t_camera.rotateLeft(-1);
             f_camera.moveLeft(-0.1f);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_S))
         {
-            // t_camera.rotateUp(1);
             f_camera.moveFront(-0.1f);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_W))
         {
-            // t_camera.rotateUp(-1);
             f_camera.moveFront(0.1f);
         }
     };
-
-    /*
-    ctx.mouse_scrolled = [&t_camera](p6::MouseScroll mouse_scroll) {
-        t_camera.moveFront(-mouse_scroll.dy);
-    };
-    */
 
     ctx.mouse_dragged = [&f_camera](p6::MouseDrag mouse_drag) {
         f_camera.rotateLeft(mouse_drag.delta.x * 100);
