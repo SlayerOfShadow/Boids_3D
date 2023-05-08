@@ -5,6 +5,7 @@
 #include "../src-common/boid.hpp"
 #include "../src-common/glimac/common.hpp"
 #include "../src-common/glimac/sphere_vertices.hpp"
+#include "3DParser.hpp"
 #include "FreeflyCamera.hpp"
 #include "GLFW/glfw3.h"
 #include "TrackballCamera.hpp"
@@ -37,15 +38,13 @@ struct BoidProgram {
 
 glm::vec3 random_vec3(float min, float max)
 {
-    static std::random_device                    rd;
-    static std::mt19937                          gen(rd());
-    static std::uniform_real_distribution<float> dist(min, max);
-
-    return glm::vec3(dist(gen), dist(gen), 0);
+    return glm::vec3(glm::linearRand(min, max), glm::linearRand(min, max), glm::linearRand(min, max));
 }
 
 int main()
 {
+    srand(time(0));
+
     auto ctx = p6::Context{{1280, 720, "Boids 3D"}};
     ctx.maximize_window();
 
@@ -75,12 +74,8 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    std::vector<Boid>                boids;
-    size_t                           nb_boids      = 5;
-    float                            boid_size     = 0.5f;
-    float                            boid_speed    = 1.0f;
-    float                            wall_distance = 35.0f;
-    std::vector<glimac::ShapeVertex> boid_shape    = glimac::sphere_vertices(1.f, 32, 16);
+    std::vector<glimac::ShapeVertex> boid_shape = glimac::sphere_vertices(1.f, 32, 16);
+    // std::vector<glimac::ShapeVertex> boid_shape = loadObjFile("./assets/models/cube.obj");
 
     glBufferData(GL_ARRAY_BUFFER, boid_shape.size() * sizeof(glimac::ShapeVertex), boid_shape.data(), GL_STATIC_DRAW);
 
@@ -116,9 +111,37 @@ int main()
 
     MV_transformations.push_back(MVMatrix);
 
+    // Parameters
+    std::vector<Boid> boids;
+    size_t            nb_boids              = 30;
+    float             boid_size             = 0.25f;
+    float             boid_speed            = 0.05f;
+    float             wall_distance         = 3.0f;
+    float             avoid_wall_smoothness = 0.01f;
+
+    float separation_distance = 1.0f;
+    float alignement_distance = 1.0f;
+    float cohesion_distance   = 1.0f;
+    float separation_strength = 0.55f;
+    float alignement_strength = 0.25f;
+    float cohesion_strength   = 0.385f;
+
+    // Display parameters
+    ctx.imgui = [&]() {
+        ImGui::Begin("Parameters");
+        ImGui::SliderFloat("Size", &boid_size, 0.1f, 1.0f);
+        ImGui::SliderFloat("Speed", &boid_speed, 0.01f, 0.1f);
+        ImGui::SliderFloat("Wall distance", &wall_distance, 2.0f, 10.0f);
+        ImGui::SliderFloat("Avoid wall smoothness", &avoid_wall_smoothness, 0.01f, 0.2f);
+        ImGui::SliderFloat("Separation", &separation_strength, 0.0f, 1.0f);
+        ImGui::SliderFloat("Alignement", &alignement_strength, 0.0f, 1.0f);
+        ImGui::SliderFloat("Cohesion", &cohesion_strength, 0.0f, 1.0f);
+        ImGui::End();
+    };
+
     for (size_t i = 0; i < nb_boids; i++)
     {
-        boids.push_back(Boid(boid_size, boid_speed, random_vec3(-3.0f, 3.0f), glm::vec3(0, 0, 0)));
+        boids.push_back(Boid(boid_size, boid_speed, random_vec3(-3.0f, 3.0f), normalize(random_vec3(-1.0f, 1.0f))));
         MV_transformations.push_back(MVMatrix);
     }
 
@@ -143,7 +166,17 @@ int main()
 
         for (size_t i = 0; i < nb_boids; i++)
         {
+            boids[i].move_boid();
+            boids[i].avoid_walls(glm::vec3(-wall_distance), glm::vec3(wall_distance), avoid_wall_smoothness);
+            boids[i].update_boid(boid_size, boid_speed);
+            boids[i].separate(boids, separation_distance, separation_strength);
+            boids[i].align(boids, alignement_distance, alignement_strength);
+            boids[i].cohesion(boids, cohesion_distance, cohesion_strength);
+
+            glm::mat4 R = glm::lookAt(glm::vec3(0, 0, 0), boids[i].get_direction(), glm::vec3(0, 1, 0));
+
             MV_transformations[i + 1] = glm::translate(MV_transformations[0], boids[i].get_position());
+            MV_transformations[i + 1] *= R; // Apply the rotation matrix
             MV_transformations[i + 1] = glm::scale(MV_transformations[i + 1], glm::vec3(boid_size));
 
             glUniformMatrix4fv(boidProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));

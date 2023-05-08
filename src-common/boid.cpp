@@ -7,38 +7,37 @@ void Boid::move_boid()
     m_position += m_direction * m_speed;
 }
 
-void Boid::avoid_walls(const glm::vec3& min_window_size, const glm::vec3& max_window_size, const float& wall_distance)
+void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& smooth)
 {
     glm::vec3 force(0.0f);
 
-    if (m_position.x < min_window_size.x + wall_distance)
+    if (m_position.x < min.x)
     {
-        force.x = (min_window_size.x + wall_distance - m_position.x);
+        force.x = (min.x - m_position.x);
     }
-    else if (m_position.x > max_window_size.x - wall_distance)
+    else if (m_position.x > max.x)
     {
-        force.x = (max_window_size.x - wall_distance - m_position.x);
+        force.x = (max.x - m_position.x);
     }
-    if (m_position.y < min_window_size.y + wall_distance)
+    if (m_position.y < min.y)
     {
-        force.y = (min_window_size.y + wall_distance - m_position.y);
+        force.y = (min.y - m_position.y);
     }
-    else if (m_position.y > max_window_size.y - wall_distance)
+    else if (m_position.y > max.y)
     {
-        force.y = (max_window_size.y - wall_distance - m_position.y);
+        force.y = (max.y - m_position.y);
+    }
+    if (m_position.z < min.z)
+    {
+        force.z = (min.z - m_position.z);
+    }
+    else if (m_position.z > max.z)
+    {
+        force.z = (max.z - m_position.z);
     }
 
-    m_direction += force;
+    m_direction += force * smooth;
     m_direction = glm::normalize(m_direction);
-}
-
-void Boid::display_boid(p6::Context& context)
-{
-    context.equilateral_triangle(
-        p6::Center{m_position},
-        p6::Radius{m_size},
-        p6::Rotation{m_direction}
-    );
 }
 
 void Boid::update_boid(const float& size, const float& speed)
@@ -131,7 +130,7 @@ glm::vec3 Boid::get_position() const
     return m_position;
 }
 
-float Boid::get_size() const
+glm::vec3 Boid::get_direction() const
 {
-    return m_size;
+    return m_direction;
 }

@@ -22,9 +22,7 @@ public:
     // Methods
     void move_boid();
 
-    void avoid_walls(const glm::vec3& min_window_size, const glm::vec3& max_window_size, const float& wall_distance);
-
-    void display_boid(p6::Context& context);
+    void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& smooth);
 
     void update_boid(const float& size, const float& speed);
 
@@ -36,5 +34,5 @@ public:
 
     glm::vec3 get_position() const;
 
-    float get_size() const;
+    glm::vec3 get_direction() const;
 };
