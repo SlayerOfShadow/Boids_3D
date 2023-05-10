@@ -1,18 +1,11 @@
 #include <p6/p6.h>
-#include <stdio.h>
-#include <vcruntime.h>
-#include <vector>
-#include "../src-common/Boid.hpp"
-#include "../src-common/Setup.hpp"
 #include "3DParser.hpp"
+#include "Boid.hpp"
 #include "FreeflyCamera.hpp"
 #include "GLFW/glfw3.h"
-#include "TrackballCamera.hpp"
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/fwd.hpp"
+#include "Setup.hpp"
 #include "glm/gtc/random.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include "img/src/Image.h"
 
 struct BoidProgram {
     p6::Shader m_Program;
