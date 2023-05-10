@@ -3,32 +3,11 @@
 #include "Boid.hpp"
 #include "FreeflyCamera.hpp"
 #include "GLFW/glfw3.h"
+#include "Programs.hpp"
 #include "Setup.hpp"
+#include "Utilities.hpp"
 #include "glm/gtc/random.hpp"
 #include "glm/gtc/type_ptr.hpp"
-
-struct BoidProgram {
-    p6::Shader m_Program;
-
-    GLuint uMVPMatrix;
-    GLuint uMVMatrix;
-    GLuint uNormalMatrix;
-    GLuint uTexture;
-
-    BoidProgram()
-        : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/tex3D.fs.glsl")}
-    {
-        uMVPMatrix    = glGetUniformLocation(m_Program.id(), "uMVPMatrix");
-        uMVMatrix     = glGetUniformLocation(m_Program.id(), "uMVMatrix");
-        uNormalMatrix = glGetUniformLocation(m_Program.id(), "uNormalMatrix");
-        uTexture      = glGetUniformLocation(m_Program.id(), "uTexture");
-    }
-};
-
-glm::vec3 random_vec3(float min, float max)
-{
-    return glm::vec3(glm::linearRand(min, max), glm::linearRand(min, max), glm::linearRand(min, max));
-}
 
 int main()
 {
@@ -37,27 +16,19 @@ int main()
     auto ctx = p6::Context{{1280, 720, "Boids 3D"}};
     ctx.maximize_window();
 
-    BoidProgram boidProgram{};
+    ////////// PROGRAMS //////////
+
+    BoidProgram boid_program{};
+
+    ////////// TEXTURES //////////
 
     img::Image earth_image = p6::load_image_buffer("./assets/textures/EarthMap.jpg");
     GLuint     earth_texture;
+    create_texture(earth_image, earth_texture);
 
     img::Image background_image = p6::load_image_buffer("./assets/textures/background.jpg");
     GLuint     background_texture;
-
-    glGenTextures(1, &earth_texture);
-    glBindTexture(GL_TEXTURE_2D, earth_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, earth_image.width(), earth_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, earth_image.data());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glGenTextures(1, &background_texture);
-    glBindTexture(GL_TEXTURE_2D, background_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, background_image.width(), background_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, background_image.data());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    create_texture(background_image, background_texture);
 
     ////////// VBOS & VAOS //////////
 
@@ -79,20 +50,8 @@ int main()
     GLuint vao2;
     create_vao(vao2, vbo2);
 
-    /////////////////////////////////
+    ////////// PARAMETERS //////////
 
-    glEnable(GL_DEPTH_TEST);
-
-    glm::mat4              ProjMatrix, MVMatrix, NormalMatrix;
-    std::vector<glm::mat4> MV_transformations;
-    FreeflyCamera          f_camera;
-
-    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
-    NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
-
-    MV_transformations.push_back(MVMatrix);
-
-    // Parameters
     std::vector<Boid> boids;
     size_t            nb_boids              = 30;
     float             boid_size             = 0.25f;
@@ -106,9 +65,7 @@ int main()
     float separation_strength = 0.55f;
     float alignement_strength = 0.25f;
     float cohesion_strength   = 0.385f;
-
-    // Display parameters
-    bool lowQuality = false;
+    bool  lowQuality          = false;
 
     ctx.imgui = [&]() {
         ImGui::Begin("Parameters");
@@ -117,14 +74,25 @@ int main()
         ImGui::SliderFloat("Separation", &separation_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Alignement", &alignement_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Cohesion", &cohesion_strength, 0.0f, 1.0f);
-        bool changeQuality = ImGui::Button("LD/HD");
+        bool change_quality = ImGui::Button("LD/HD");
         ImGui::End();
 
-        if (changeQuality)
+        if (change_quality)
         {
             lowQuality = !lowQuality;
         }
     };
+
+    ////////// SETUP & CAMERA //////////
+
+    glm::mat4              ProjMatrix, MVMatrix, NormalMatrix;
+    std::vector<glm::mat4> MV_transformations;
+    FreeflyCamera          f_camera;
+
+    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
+    NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
+    MV_transformations.push_back(MVMatrix);
 
     for (size_t i = 0; i < nb_boids; i++)
     {
@@ -132,15 +100,18 @@ int main()
         MV_transformations.push_back(MVMatrix);
     }
 
-    // Application loop :
+    glEnable(GL_DEPTH_TEST);
+
+    ////////// APPLICATION LOOP //////////
+
     ctx.update = [&]() {
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         MV_transformations[0] = f_camera.getViewMatrix();
 
-        boidProgram.m_Program.use();
-        glUniform1i(boidProgram.uTexture, 0);
+        boid_program.m_Program.use();
+        glUniform1i(boid_program.uTexture, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, earth_texture);
         (lowQuality ? glBindVertexArray(vao1) : glBindVertexArray(vao2));
@@ -160,14 +131,15 @@ int main()
             MV_transformations[i + 1] *= R;
             MV_transformations[i + 1] = glm::scale(MV_transformations[i + 1], glm::vec3(boid_size));
 
-            glUniformMatrix4fv(boidProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
-            glUniformMatrix4fv(boidProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
-            glUniformMatrix4fv(boidProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glUniformMatrix4fv(boid_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
+            glUniformMatrix4fv(boid_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
+            glUniformMatrix4fv(boid_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
             (lowQuality ? glDrawArrays(GL_TRIANGLES, 0, boid_LD.size()) : glDrawArrays(GL_TRIANGLES, 0, boid_HD.size()));
         }
 
-        // INPUTS
+        ////////// INPUTS //////////
+
         if (ctx.key_is_pressed(GLFW_KEY_A))
         {
             f_camera.moveLeft(0.1f);
@@ -194,10 +166,8 @@ int main()
         f_camera.rotateUp(-mouse_drag.delta.y * 100);
     };
 
-    // Start the update loop
     ctx.start();
 
-    // Cleanup once the window is closed
     glDeleteBuffers(1, &vbo1);
     glDeleteBuffers(1, &vbo2);
     glDeleteVertexArrays(1, &vao1);
