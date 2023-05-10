@@ -1,4 +1,7 @@
 #include <p6/p6.h>
+#include <stdio.h>
+#include <vcruntime.h>
+#include <vector>
 #include "3DParser.hpp"
 #include "Boid.hpp"
 #include "FreeflyCamera.hpp"
@@ -23,67 +26,68 @@ int main()
 
     ////////// TEXTURES //////////
 
-    img::Image earth_image = p6::load_image_buffer("./assets/textures/EarthMap.jpg");
-    GLuint     earth_texture;
-    create_texture(earth_image, earth_texture);
+    size_t                  nb_textures = 2;
+    std::vector<img::Image> images;
+    std::vector<GLuint>     textures(nb_textures);
 
-    img::Image background_image = p6::load_image_buffer("./assets/textures/background.jpg");
-    GLuint     background_texture;
-    create_texture(background_image, background_texture);
+    images.push_back(p6::load_image_buffer("./assets/textures/EarthMap.jpg"));
+    images.push_back(p6::load_image_buffer("./assets/textures/background.jpg"));
+
+    for (size_t i = 0; i < nb_textures; i++)
+    {
+        create_texture(images[i], textures[i]);
+    }
 
     ////////// VBOS & VAOS //////////
 
-    GLuint                           vbo_boid_LD;
-    std::vector<glimac::ShapeVertex> boid_LD = loadObjFile("./assets/models/cubeLD.obj");
-    create_vbo(vbo_boid_LD, boid_LD);
+    size_t                                        nb_objects = 3;
+    std::vector<GLuint>                           vbos(nb_objects);
+    std::vector<GLuint>                           vaos(nb_objects);
+    std::vector<std::vector<glimac::ShapeVertex>> shapes;
 
-    GLuint                           vbo_boid_HD;
-    std::vector<glimac::ShapeVertex> boid_HD = loadObjFile("./assets/models/cubeHD.obj");
-    create_vbo(vbo_boid_HD, boid_HD);
+    shapes.push_back(loadObjFile("./assets/models/cubeLD.obj"));
+    shapes.push_back(loadObjFile("./assets/models/cubeHD.obj"));
+    shapes.push_back(loadObjFile("./assets/models/background.obj"));
 
-    GLuint                           vbo_background;
-    std::vector<glimac::ShapeVertex> background = loadObjFile("./assets/models/background.obj");
-    create_vbo(vbo_background, background);
-
-    GLuint vao_boid_LD;
-    create_vao(vao_boid_LD, vbo_boid_LD);
-
-    GLuint vao_boid_HD;
-    create_vao(vao_boid_HD, vbo_boid_HD);
-
-    GLuint vao_background;
-    create_vao(vao_background, vbo_background);
+    for (size_t i = 0; i < nb_objects; i++)
+    {
+        create_vbo(vbos[i], shapes[i]);
+        create_vao(vaos[i], vbos[i]);
+    }
 
     ////////// PARAMETERS //////////
 
     std::vector<Boid> boids;
-    size_t            nb_boids              = 30;
-    float             boid_size             = 0.25f;
-    float             boid_speed            = 0.05f;
-    float             wall_distance         = 3.0f;
+    size_t            nb_boids              = 200;
+    float             boid_size             = 0.75f;
+    float             boid_speed            = 0.1f;
+    float             wall_distance         = 85.0f;
     float             avoid_wall_smoothness = 0.01f;
 
-    float separation_distance = 1.0f;
-    float alignement_distance = 1.0f;
-    float cohesion_distance   = 1.0f;
-    float separation_strength = 0.55f;
+    float separation_distance = 5.0f;
+    float alignement_distance = 5.0f;
+    float cohesion_distance   = 5.0f;
+    float separation_strength = 1.0f;
     float alignement_strength = 0.25f;
-    float cohesion_strength   = 0.385f;
-    bool  lowQuality          = false;
+    float cohesion_strength   = 0.125f;
+    bool  low_quality         = false;
 
     ctx.imgui = [&]() {
         ImGui::Begin("Parameters");
         ImGui::SliderFloat("Size", &boid_size, 0.1f, 1.0f);
-        ImGui::SliderFloat("Speed", &boid_speed, 0.01f, 0.1f);
+        ImGui::SliderFloat("Speed", &boid_speed, 0.05f, 0.2f);
         ImGui::SliderFloat("Separation", &separation_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Alignement", &alignement_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Cohesion", &cohesion_strength, 0.0f, 1.0f);
+        ImGui::SliderFloat("Separation distance", &separation_distance, 0.0f, 1.0f);
+        ImGui::SliderFloat("Alignement distance", &alignement_distance, 0.0f, 1.0f);
+        ImGui::SliderFloat("Cohesion distance", &cohesion_distance, 0.0f, 1.0f);
         bool change_quality = ImGui::Button("LD/HD");
         ImGui::End();
 
         if (change_quality)
         {
-            lowQuality = !lowQuality;
+            low_quality = !low_quality;
         }
     };
 
@@ -93,14 +97,14 @@ int main()
     std::vector<glm::mat4> MV_transformations;
     FreeflyCamera          f_camera;
 
-    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 100.0f);
+    ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 200.0f);
     NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
     MV_transformations.push_back(MVMatrix);
 
     for (size_t i = 0; i < nb_boids; i++)
     {
-        boids.push_back(Boid(boid_size, boid_speed, random_vec3(-3.0f, 3.0f), normalize(random_vec3(-1.0f, 1.0f))));
+        boids.push_back(Boid(boid_size, boid_speed, random_vec3(-wall_distance, wall_distance), normalize(random_vec3(-1.0f, 1.0f))));
         MV_transformations.push_back(MVMatrix);
     }
 
@@ -114,26 +118,30 @@ int main()
 
         MV_transformations[0] = f_camera.getViewMatrix();
 
+        ////////// BACKGROUND //////////
+
         background_program.m_Program.use();
 
         glUniform1i(background_program.uTexture, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, background_texture);
+        glBindTexture(GL_TEXTURE_2D, textures[1]);
 
         glUniformMatrix4fv(background_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
         glUniformMatrix4fv(background_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
         glUniformMatrix4fv(background_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
-        glBindVertexArray(vao_background);
-        glDrawArrays(GL_TRIANGLES, 0, background.size());
+        glBindVertexArray(vaos[2]);
+        glDrawArrays(GL_TRIANGLES, 0, shapes[2].size());
+
+        ////////// BOIDS //////////
 
         boid_program.m_Program.use();
 
         glUniform1i(boid_program.uTexture, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, earth_texture);
+        glBindTexture(GL_TEXTURE_2D, textures[0]);
 
-        (lowQuality ? glBindVertexArray(vao_boid_LD) : glBindVertexArray(vao_boid_HD));
+        (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
 
         for (size_t i = 0; i < nb_boids; i++)
         {
@@ -154,29 +162,29 @@ int main()
             glUniformMatrix4fv(boid_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
             glUniformMatrix4fv(boid_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
-            (lowQuality ? glDrawArrays(GL_TRIANGLES, 0, boid_LD.size()) : glDrawArrays(GL_TRIANGLES, 0, boid_HD.size()));
+            (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
         }
 
         ////////// INPUTS //////////
 
         if (ctx.key_is_pressed(GLFW_KEY_A))
         {
-            f_camera.moveLeft(0.1f);
+            f_camera.moveLeft(0.1f, wall_distance);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_D))
         {
-            f_camera.moveLeft(-0.1f);
+            f_camera.moveLeft(-0.1f, wall_distance);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_S))
         {
-            f_camera.moveFront(-0.1f);
+            f_camera.moveFront(-0.1f, wall_distance);
         }
 
         if (ctx.key_is_pressed(GLFW_KEY_W))
         {
-            f_camera.moveFront(0.1f);
+            f_camera.moveFront(0.1f, wall_distance);
         }
     };
 
@@ -189,12 +197,14 @@ int main()
 
     ////////// CLEAR //////////
 
-    glDeleteBuffers(1, &vbo_boid_LD);
-    glDeleteBuffers(1, &vbo_boid_HD);
-    glDeleteBuffers(1, &vbo_background);
-    glDeleteVertexArrays(1, &vao_boid_LD);
-    glDeleteVertexArrays(1, &vao_boid_HD);
-    glDeleteVertexArrays(1, &vao_background);
-    glDeleteTextures(1, &earth_texture);
-    glDeleteTextures(1, &background_texture);
+    for (size_t i = 0; i < nb_objects; i++)
+    {
+        glDeleteBuffers(1, &vbos[i]);
+        glDeleteVertexArrays(1, &vaos[i]);
+    }
+
+    for (size_t i = 0; i < nb_textures; i++)
+    {
+        glDeleteTextures(1, &textures[i]);
+    }
 }

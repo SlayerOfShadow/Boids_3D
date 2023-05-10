@@ -1,4 +1,5 @@
 #include "FreeflyCamera.hpp"
+#include "glm/fwd.hpp"
 
 void FreeflyCamera::computeDirectionVectors()
 {
@@ -9,17 +10,25 @@ void FreeflyCamera::computeDirectionVectors()
     this->m_UpVector = glm::cross(this->m_FrontVector, this->m_LeftVector);
 };
 
-void FreeflyCamera::moveLeft(float t)
+void FreeflyCamera::moveLeft(float t, float wall_distance)
 {
-    this->m_Position += t * m_LeftVector;
-    this->computeDirectionVectors();
-};
+    glm::vec3 newPosition = m_Position + t * m_LeftVector;
+    if (newPosition.x >= -wall_distance && newPosition.x <= wall_distance && newPosition.y >= -wall_distance && newPosition.y <= wall_distance && newPosition.z >= -wall_distance && newPosition.z <= wall_distance)
+    {
+        m_Position = newPosition;
+        computeDirectionVectors();
+    }
+}
 
-void FreeflyCamera::moveFront(float t)
+void FreeflyCamera::moveFront(float t, float wall_distance)
 {
-    this->m_Position += t * this->m_FrontVector;
-    this->computeDirectionVectors();
-};
+    glm::vec3 newPosition = m_Position + t * m_FrontVector;
+    if (newPosition.x >= -wall_distance && newPosition.x <= wall_distance && newPosition.y >= -wall_distance && newPosition.y <= wall_distance && newPosition.z >= -wall_distance && newPosition.z <= wall_distance)
+    {
+        m_Position = newPosition;
+        computeDirectionVectors();
+    }
+}
 
 void FreeflyCamera::rotateLeft(float degrees)
 {

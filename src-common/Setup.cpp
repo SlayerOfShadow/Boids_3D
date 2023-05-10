@@ -42,3 +42,7 @@ void create_vao(GLuint& vao, GLuint& vbo)
 
     glBindVertexArray(0);
 }
+
+void draw_object()
+{
+}

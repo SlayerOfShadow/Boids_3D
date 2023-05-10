@@ -1,6 +1,7 @@
 #pragma once
 
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float3.hpp"
 
 class FreeflyCamera {
 private:
@@ -18,8 +19,8 @@ public:
     {
         computeDirectionVectors();
     };
-    void      moveLeft(float t);
-    void      moveFront(float t);
+    void      moveLeft(float t, float wall_distance);
+    void      moveFront(float t, float wall_distance);
     void      rotateLeft(float degrees);
     void      rotateUp(float degrees);
     glm::mat4 getViewMatrix() const;
