@@ -6,6 +6,7 @@ in vec2 vTexCoords;
 
 out vec3 fFragColor;
 
+uniform vec3 uAmbient;
 uniform vec3 uKd;
 uniform vec3 uKs;
 uniform float uShininess;

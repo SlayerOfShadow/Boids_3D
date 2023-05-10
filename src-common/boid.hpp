@@ -1,6 +1,5 @@
-#include <vector>
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/ext/vector_float3.hpp"
+#pragma once
+
 #include "p6/p6.h"
 
 class Boid {

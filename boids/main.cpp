@@ -2,14 +2,12 @@
 #include <stdio.h>
 #include <vcruntime.h>
 #include <vector>
-#include "../src-common/boid.hpp"
-#include "../src-common/glimac/common.hpp"
-#include "../src-common/glimac/sphere_vertices.hpp"
+#include "../src-common/Boid.hpp"
+#include "../src-common/Setup.hpp"
 #include "3DParser.hpp"
 #include "FreeflyCamera.hpp"
 #include "GLFW/glfw3.h"
 #include "TrackballCamera.hpp"
-#include "glimac/common.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/fwd.hpp"
 #include "glm/gtc/random.hpp"
@@ -22,17 +20,15 @@ struct BoidProgram {
     GLuint uMVPMatrix;
     GLuint uMVMatrix;
     GLuint uNormalMatrix;
-    GLuint uTexture1;
-    GLuint uTexture2;
+    GLuint uTexture;
 
     BoidProgram()
-        : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/multiTex3D.fs.glsl")}
+        : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/tex3D.fs.glsl")}
     {
         uMVPMatrix    = glGetUniformLocation(m_Program.id(), "uMVPMatrix");
         uMVMatrix     = glGetUniformLocation(m_Program.id(), "uMVMatrix");
         uNormalMatrix = glGetUniformLocation(m_Program.id(), "uNormalMatrix");
-        uTexture1     = glGetUniformLocation(m_Program.id(), "uTexture1");
-        uTexture2     = glGetUniformLocation(m_Program.id(), "uTexture2");
+        uTexture      = glGetUniformLocation(m_Program.id(), "uTexture");
     }
 };
 
@@ -50,10 +46,11 @@ int main()
 
     BoidProgram boidProgram{};
 
-    img::Image earth_image = p6::load_image_buffer("assets/textures/EarthMap.jpg");
-    img::Image cloud_image = p6::load_image_buffer("assets/textures/CloudMap.jpg");
+    img::Image earth_image = p6::load_image_buffer("./assets/textures/EarthMap.jpg");
     GLuint     earth_texture;
-    GLuint     cloud_texture;
+
+    img::Image background_image = p6::load_image_buffer("./assets/textures/background.jpg");
+    GLuint     background_texture;
 
     glGenTextures(1, &earth_texture);
     glBindTexture(GL_TEXTURE_2D, earth_texture);
@@ -62,43 +59,34 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glGenTextures(1, &cloud_texture);
-    glBindTexture(GL_TEXTURE_2D, cloud_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cloud_image.width(), cloud_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, cloud_image.data());
+    glGenTextures(1, &background_texture);
+    glBindTexture(GL_TEXTURE_2D, background_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, background_image.width(), background_image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, background_image.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
+    ////////// VBOS & VAOS //////////
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    GLuint                           vbo1;
+    std::vector<glimac::ShapeVertex> boid_LD = loadObjFile("./assets/models/cubeLD.obj");
+    create_vbo(vbo1, boid_LD);
 
-    std::vector<glimac::ShapeVertex> boid_shape = glimac::sphere_vertices(1.f, 32, 16);
-    // std::vector<glimac::ShapeVertex> boid_shape = loadObjFile("./assets/models/cube.obj");
+    GLuint                           vbo2;
+    std::vector<glimac::ShapeVertex> boid_HD = loadObjFile("./assets/models/cubeHD.obj");
+    create_vbo(vbo2, boid_HD);
 
-    glBufferData(GL_ARRAY_BUFFER, boid_shape.size() * sizeof(glimac::ShapeVertex), boid_shape.data(), GL_STATIC_DRAW);
+    GLuint                           vbo3;
+    std::vector<glimac::ShapeVertex> background = loadObjFile("./assets/models/background.obj");
+    create_vbo(vbo3, background);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    GLuint vao1;
+    create_vao(vao1, vbo1);
 
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
+    GLuint vao2;
+    create_vao(vao2, vbo2);
 
-    glBindVertexArray(vao);
-
-    static constexpr GLuint VERTEX_ATTR_POSITION  = 0;
-    static constexpr GLuint VERTEX_ATTR_NORMAL    = 1;
-    static constexpr GLuint VERTEX_ATTR_TEXCOORDS = 2;
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
-    glEnableVertexAttribArray(VERTEX_ATTR_TEXCOORDS);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, position));
-    glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, normal));
-    glVertexAttribPointer(VERTEX_ATTR_TEXCOORDS, 2, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, texCoords));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindVertexArray(0);
+    /////////////////////////////////
 
     glEnable(GL_DEPTH_TEST);
 
@@ -127,16 +115,22 @@ int main()
     float cohesion_strength   = 0.385f;
 
     // Display parameters
+    bool lowQuality = false;
+
     ctx.imgui = [&]() {
         ImGui::Begin("Parameters");
         ImGui::SliderFloat("Size", &boid_size, 0.1f, 1.0f);
         ImGui::SliderFloat("Speed", &boid_speed, 0.01f, 0.1f);
-        ImGui::SliderFloat("Wall distance", &wall_distance, 2.0f, 10.0f);
-        ImGui::SliderFloat("Avoid wall smoothness", &avoid_wall_smoothness, 0.01f, 0.2f);
         ImGui::SliderFloat("Separation", &separation_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Alignement", &alignement_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Cohesion", &cohesion_strength, 0.0f, 1.0f);
+        bool changeQuality = ImGui::Button("LD/HD");
         ImGui::End();
+
+        if (changeQuality)
+        {
+            lowQuality = !lowQuality;
+        }
     };
 
     for (size_t i = 0; i < nb_boids; i++)
@@ -153,16 +147,10 @@ int main()
         MV_transformations[0] = f_camera.getViewMatrix();
 
         boidProgram.m_Program.use();
-
-        glUniform1i(boidProgram.uTexture1, 0);
-        glUniform1i(boidProgram.uTexture2, 1);
-
+        glUniform1i(boidProgram.uTexture, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, earth_texture); // la texture earth_texture est bindée sur l'unité GL_TEXTURE0
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, cloud_texture); // la texture cloud_texture est bindée sur l'unité GL_TEXTURE1
-
-        glBindVertexArray(vao);
+        glBindTexture(GL_TEXTURE_2D, earth_texture);
+        (lowQuality ? glBindVertexArray(vao1) : glBindVertexArray(vao2));
 
         for (size_t i = 0; i < nb_boids; i++)
         {
@@ -176,14 +164,14 @@ int main()
             glm::mat4 R = glm::lookAt(glm::vec3(0, 0, 0), boids[i].get_direction(), glm::vec3(0, 1, 0));
 
             MV_transformations[i + 1] = glm::translate(MV_transformations[0], boids[i].get_position());
-            MV_transformations[i + 1] *= R; // Apply the rotation matrix
+            MV_transformations[i + 1] *= R;
             MV_transformations[i + 1] = glm::scale(MV_transformations[i + 1], glm::vec3(boid_size));
 
             glUniformMatrix4fv(boidProgram.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
             glUniformMatrix4fv(boidProgram.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
             glUniformMatrix4fv(boidProgram.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
-            glDrawArrays(GL_TRIANGLES, 0, boid_shape.size());
+            (lowQuality ? glDrawArrays(GL_TRIANGLES, 0, boid_LD.size()) : glDrawArrays(GL_TRIANGLES, 0, boid_HD.size()));
         }
 
         // INPUTS
@@ -217,7 +205,10 @@ int main()
     ctx.start();
 
     // Cleanup once the window is closed
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo1);
+    glDeleteBuffers(1, &vbo2);
+    glDeleteVertexArrays(1, &vao1);
+    glDeleteVertexArrays(1, &vao2);
     glDeleteTextures(1, &earth_texture);
+    glDeleteTextures(1, &background_texture);
 }

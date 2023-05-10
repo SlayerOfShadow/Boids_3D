@@ -1,5 +1,4 @@
-#include "boid.hpp"
-#include "glm/ext/vector_float3.hpp"
+#include "Boid.hpp"
 
 //  Methods
 void Boid::move_boid()
