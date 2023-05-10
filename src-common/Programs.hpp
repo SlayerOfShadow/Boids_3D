@@ -2,7 +2,7 @@
 
 #include <p6/p6.h>
 
-struct BoidProgram {
+struct OneTextureProgram {
     p6::Shader m_Program;
 
     GLuint uMVPMatrix;
@@ -10,7 +10,7 @@ struct BoidProgram {
     GLuint uNormalMatrix;
     GLuint uTexture;
 
-    BoidProgram()
+    OneTextureProgram()
         : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/tex3D.fs.glsl")}
     {
         uMVPMatrix    = glGetUniformLocation(m_Program.id(), "uMVPMatrix");

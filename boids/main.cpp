@@ -18,7 +18,8 @@ int main()
 
     ////////// PROGRAMS //////////
 
-    BoidProgram boid_program{};
+    OneTextureProgram boid_program{};
+    OneTextureProgram background_program{};
 
     ////////// TEXTURES //////////
 
@@ -32,23 +33,26 @@ int main()
 
     ////////// VBOS & VAOS //////////
 
-    GLuint                           vbo1;
+    GLuint                           vbo_boid_LD;
     std::vector<glimac::ShapeVertex> boid_LD = loadObjFile("./assets/models/cubeLD.obj");
-    create_vbo(vbo1, boid_LD);
+    create_vbo(vbo_boid_LD, boid_LD);
 
-    GLuint                           vbo2;
+    GLuint                           vbo_boid_HD;
     std::vector<glimac::ShapeVertex> boid_HD = loadObjFile("./assets/models/cubeHD.obj");
-    create_vbo(vbo2, boid_HD);
+    create_vbo(vbo_boid_HD, boid_HD);
 
-    GLuint                           vbo3;
+    GLuint                           vbo_background;
     std::vector<glimac::ShapeVertex> background = loadObjFile("./assets/models/background.obj");
-    create_vbo(vbo3, background);
+    create_vbo(vbo_background, background);
 
-    GLuint vao1;
-    create_vao(vao1, vbo1);
+    GLuint vao_boid_LD;
+    create_vao(vao_boid_LD, vbo_boid_LD);
 
-    GLuint vao2;
-    create_vao(vao2, vbo2);
+    GLuint vao_boid_HD;
+    create_vao(vao_boid_HD, vbo_boid_HD);
+
+    GLuint vao_background;
+    create_vao(vao_background, vbo_background);
 
     ////////// PARAMETERS //////////
 
@@ -110,11 +114,26 @@ int main()
 
         MV_transformations[0] = f_camera.getViewMatrix();
 
+        background_program.m_Program.use();
+
+        glUniform1i(background_program.uTexture, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, background_texture);
+
+        glUniformMatrix4fv(background_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
+        glUniformMatrix4fv(background_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
+        glUniformMatrix4fv(background_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+
+        glBindVertexArray(vao_background);
+        glDrawArrays(GL_TRIANGLES, 0, background.size());
+
         boid_program.m_Program.use();
+
         glUniform1i(boid_program.uTexture, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, earth_texture);
-        (lowQuality ? glBindVertexArray(vao1) : glBindVertexArray(vao2));
+
+        (lowQuality ? glBindVertexArray(vao_boid_LD) : glBindVertexArray(vao_boid_HD));
 
         for (size_t i = 0; i < nb_boids; i++)
         {
@@ -168,10 +187,14 @@ int main()
 
     ctx.start();
 
-    glDeleteBuffers(1, &vbo1);
-    glDeleteBuffers(1, &vbo2);
-    glDeleteVertexArrays(1, &vao1);
-    glDeleteVertexArrays(1, &vao2);
+    ////////// CLEAR //////////
+
+    glDeleteBuffers(1, &vbo_boid_LD);
+    glDeleteBuffers(1, &vbo_boid_HD);
+    glDeleteBuffers(1, &vbo_background);
+    glDeleteVertexArrays(1, &vao_boid_LD);
+    glDeleteVertexArrays(1, &vao_boid_HD);
+    glDeleteVertexArrays(1, &vao_background);
     glDeleteTextures(1, &earth_texture);
     glDeleteTextures(1, &background_texture);
 }
