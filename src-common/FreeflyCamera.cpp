@@ -46,3 +46,13 @@ glm::mat4 FreeflyCamera::getViewMatrix() const
 {
     return glm::lookAt(this->m_Position, glm::vec3(this->m_Position + this->m_FrontVector), this->m_UpVector);
 };
+
+glm::vec3 FreeflyCamera::getPosition() const
+{
+    return m_Position;
+}
+
+glm::vec3 FreeflyCamera::getFront() const
+{
+    return m_FrontVector;
+}

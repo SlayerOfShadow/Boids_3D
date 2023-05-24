@@ -103,7 +103,8 @@ int main()
     ProjMatrix   = glm::perspective(glm::radians(70.f), ctx.aspect_ratio(), 0.1f, 200.0f);
     NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
-    MV_transformations.push_back(MVMatrix);
+    MV_transformations.push_back(MVMatrix); // Camera
+    MV_transformations.push_back(MVMatrix); // Player
 
     for (size_t i = 0; i < nb_boids; i++)
     {
@@ -149,11 +150,23 @@ int main()
         glBindVertexArray(vaos[2]);
         glDrawArrays(GL_TRIANGLES, 0, shapes[2].size());
 
-        ////////// BOIDS //////////
+        ////////// PLAYER //////////
+
+        (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
 
         glBindTexture(GL_TEXTURE_2D, textures[0]);
 
-        (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
+        glm::vec3 playerPosition = f_camera.getPosition();
+        MV_transformations[1]    = glm::translate(MV_transformations[0], playerPosition);
+        MV_transformations[1]    = glm::scale(MV_transformations[1], glm::vec3(0.1f));
+
+        glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[1]));
+        glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[1]));
+        glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+
+        (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
+
+        ////////// BOIDS //////////
 
         for (size_t i = 0; i < nb_boids; i++)
         {
@@ -164,16 +177,16 @@ int main()
             boids[i].align(boids, alignement_distance, alignement_strength);
             boids[i].cohesion(boids, cohesion_distance, cohesion_strength);
 
-            MV_transformations[i + 1] = glm::translate(MV_transformations[0], boids[i].get_position());
-            MV_transformations[i + 1] = glm::scale(MV_transformations[i + 1], glm::vec3(boid_size));
+            MV_transformations[i + 2] = glm::translate(MV_transformations[0], boids[i].get_position());
+            MV_transformations[i + 2] = glm::scale(MV_transformations[i + 2], glm::vec3(boid_size));
 
             glm::vec3 direction = boids[i].get_direction();
             glm::vec3 upVector(0.0f, 1.0f, 0.0f);
             glm::quat rotation = glm::rotation(upVector, direction);
-            MV_transformations[i + 1] *= glm::mat4_cast(rotation);
+            MV_transformations[i + 2] *= glm::mat4_cast(rotation);
 
-            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
-            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
+            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 2]));
+            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 2]));
             glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
             (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
@@ -187,12 +200,12 @@ int main()
 
         for (size_t i = 0; i < nb_asteroids; i++)
         {
-            MV_transformations[i + 1 + nb_boids] = glm::translate(MV_transformations[0], asteroids_random_positions[i]);
-            MV_transformations[i + 1 + nb_boids] = glm::scale(MV_transformations[i + 1 + nb_boids], glm::vec3(asteroids_random_sizes[i]));
-            MV_transformations[i + 1 + nb_boids] = glm::rotate(MV_transformations[i + 1 + nb_boids], ctx.time() * asteroid_rotate_speed, asteroids_random_rotations[i]);
+            MV_transformations[i + 2 + nb_boids] = glm::translate(MV_transformations[0], asteroids_random_positions[i]);
+            MV_transformations[i + 2 + nb_boids] = glm::scale(MV_transformations[i + 2 + nb_boids], glm::vec3(asteroids_random_sizes[i]));
+            MV_transformations[i + 2 + nb_boids] = glm::rotate(MV_transformations[i + 2 + nb_boids], ctx.time() * asteroid_rotate_speed, asteroids_random_rotations[i]);
 
-            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1 + nb_boids]));
-            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1 + nb_boids]));
+            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 2 + nb_boids]));
+            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 2 + nb_boids]));
             glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
             (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[3].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[4].size()));

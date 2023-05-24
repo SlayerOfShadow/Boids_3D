@@ -24,4 +24,6 @@ public:
     void      rotateLeft(float degrees);
     void      rotateUp(float degrees);
     glm::mat4 getViewMatrix() const;
+    glm::vec3 getPosition() const;
+    glm::vec3 getFront() const;
 };
