@@ -9,8 +9,10 @@
 #include "Programs.hpp"
 #include "Setup.hpp"
 #include "Utilities.hpp"
+#include "glm/fwd.hpp"
 #include "glm/gtc/random.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "glm/gtx/quaternion.hpp"
 
 int main()
 {
@@ -21,17 +23,17 @@ int main()
 
     ////////// PROGRAMS //////////
 
-    OneTextureProgram boid_program{};
-    OneTextureProgram background_program{};
+    OneTextureProgram one_texture_program;
 
     ////////// TEXTURES //////////
 
-    size_t                  nb_textures = 2;
+    size_t                  nb_textures = 3;
     std::vector<img::Image> images;
     std::vector<GLuint>     textures(nb_textures);
 
-    images.push_back(p6::load_image_buffer("./assets/textures/EarthMap.jpg"));
+    images.push_back(p6::load_image_buffer("./assets/textures/spaceship.jpg"));
     images.push_back(p6::load_image_buffer("./assets/textures/background.jpg"));
+    images.push_back(p6::load_image_buffer("./assets/textures/asteroid.jpg"));
 
     for (size_t i = 0; i < nb_textures; i++)
     {
@@ -40,14 +42,16 @@ int main()
 
     ////////// VBOS & VAOS //////////
 
-    size_t                                        nb_objects = 3;
+    size_t                                        nb_objects = 5;
     std::vector<GLuint>                           vbos(nb_objects);
     std::vector<GLuint>                           vaos(nb_objects);
     std::vector<std::vector<glimac::ShapeVertex>> shapes;
 
-    shapes.push_back(loadObjFile("./assets/models/cubeLD.obj"));
-    shapes.push_back(loadObjFile("./assets/models/cubeHD.obj"));
+    shapes.push_back(loadObjFile("./assets/models/spaceshipLD.obj"));
+    shapes.push_back(loadObjFile("./assets/models/spaceshipHD.obj"));
     shapes.push_back(loadObjFile("./assets/models/background.obj"));
+    shapes.push_back(loadObjFile("./assets/models/asteroidLD.obj"));
+    shapes.push_back(loadObjFile("./assets/models/asteroidHD.obj"));
 
     for (size_t i = 0; i < nb_objects; i++)
     {
@@ -58,16 +62,18 @@ int main()
     ////////// PARAMETERS //////////
 
     std::vector<Boid> boids;
-    size_t            nb_boids              = 200;
+    size_t            nb_boids              = 100;
     float             boid_size             = 0.75f;
     float             boid_speed            = 0.1f;
-    float             wall_distance         = 85.0f;
+    float             wall_distance         = 55.0f;
     float             avoid_wall_smoothness = 0.01f;
+
+    size_t nb_asteroids = 20;
 
     float separation_distance = 5.0f;
     float alignement_distance = 5.0f;
     float cohesion_distance   = 5.0f;
-    float separation_strength = 1.0f;
+    float separation_strength = 0.7f;
     float alignement_strength = 0.25f;
     float cohesion_strength   = 0.125f;
     bool  low_quality         = false;
@@ -79,9 +85,6 @@ int main()
         ImGui::SliderFloat("Separation", &separation_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Alignement", &alignement_strength, 0.0f, 1.0f);
         ImGui::SliderFloat("Cohesion", &cohesion_strength, 0.0f, 1.0f);
-        ImGui::SliderFloat("Separation distance", &separation_distance, 0.0f, 1.0f);
-        ImGui::SliderFloat("Alignement distance", &alignement_distance, 0.0f, 1.0f);
-        ImGui::SliderFloat("Cohesion distance", &cohesion_distance, 0.0f, 1.0f);
         bool change_quality = ImGui::Button("LD/HD");
         ImGui::End();
 
@@ -108,6 +111,19 @@ int main()
         MV_transformations.push_back(MVMatrix);
     }
 
+    std::vector<glm::vec3> asteroids_random_positions;
+    std::vector<glm::vec3> asteroids_random_rotations;
+    std::vector<float>     asteroids_random_sizes;
+    float                  asteroid_rotate_speed = 0.25f;
+
+    for (size_t i = 0; i < nb_asteroids; i++)
+    {
+        MV_transformations.push_back(MVMatrix);
+        asteroids_random_positions.push_back(random_vec3(-90.0f, 90.0f));
+        asteroids_random_rotations.push_back(glm::sphericalRand(60.0f));
+        asteroids_random_sizes.push_back(glm::linearRand(0.5f, 5.0f));
+    }
+
     glEnable(GL_DEPTH_TEST);
 
     ////////// APPLICATION LOOP //////////
@@ -118,27 +134,23 @@ int main()
 
         MV_transformations[0] = f_camera.getViewMatrix();
 
+        one_texture_program.m_Program.use();
+        glUniform1i(one_texture_program.uTexture, 0);
+        glActiveTexture(GL_TEXTURE0);
+
         ////////// BACKGROUND //////////
 
-        background_program.m_Program.use();
-
-        glUniform1i(background_program.uTexture, 0);
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textures[1]);
 
-        glUniformMatrix4fv(background_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
-        glUniformMatrix4fv(background_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
-        glUniformMatrix4fv(background_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
+        glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
+        glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
         glBindVertexArray(vaos[2]);
         glDrawArrays(GL_TRIANGLES, 0, shapes[2].size());
 
         ////////// BOIDS //////////
 
-        boid_program.m_Program.use();
-
-        glUniform1i(boid_program.uTexture, 0);
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textures[0]);
 
         (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
@@ -152,17 +164,38 @@ int main()
             boids[i].align(boids, alignement_distance, alignement_strength);
             boids[i].cohesion(boids, cohesion_distance, cohesion_strength);
 
-            glm::mat4 R = glm::lookAt(glm::vec3(0, 0, 0), boids[i].get_direction(), glm::vec3(0, 1, 0));
-
             MV_transformations[i + 1] = glm::translate(MV_transformations[0], boids[i].get_position());
-            MV_transformations[i + 1] *= R;
             MV_transformations[i + 1] = glm::scale(MV_transformations[i + 1], glm::vec3(boid_size));
 
-            glUniformMatrix4fv(boid_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
-            glUniformMatrix4fv(boid_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
-            glUniformMatrix4fv(boid_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glm::vec3 direction = boids[i].get_direction();
+            glm::vec3 upVector(0.0f, 1.0f, 0.0f);
+            glm::quat rotation = glm::rotation(upVector, direction);
+            MV_transformations[i + 1] *= glm::mat4_cast(rotation);
+
+            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1]));
+            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1]));
+            glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
             (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
+        }
+
+        ////////// ASTEROIDS //////////
+
+        glBindTexture(GL_TEXTURE_2D, textures[2]);
+
+        (low_quality ? glBindVertexArray(vaos[3]) : glBindVertexArray(vaos[4]));
+
+        for (size_t i = 0; i < nb_asteroids; i++)
+        {
+            MV_transformations[i + 1 + nb_boids] = glm::translate(MV_transformations[0], asteroids_random_positions[i]);
+            MV_transformations[i + 1 + nb_boids] = glm::scale(MV_transformations[i + 1 + nb_boids], glm::vec3(asteroids_random_sizes[i]));
+            MV_transformations[i + 1 + nb_boids] = glm::rotate(MV_transformations[i + 1 + nb_boids], ctx.time() * asteroid_rotate_speed, asteroids_random_rotations[i]);
+
+            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 1 + nb_boids]));
+            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 1 + nb_boids]));
+            glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+
+            (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[3].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[4].size()));
         }
 
         ////////// INPUTS //////////
