@@ -23,7 +23,8 @@ int main()
 
     ////////// PROGRAMS //////////
 
-    OneTextureProgram one_texture_program;
+    OneTextureProgram      one_texture_program;
+    OneTextureLightProgram one_texture_light_program;
 
     ////////// TEXTURES //////////
 
@@ -63,7 +64,7 @@ int main()
 
     std::vector<Boid> boids;
     size_t            nb_boids              = 100;
-    float             boid_size             = 0.75f;
+    float             boid_size             = 0.5f;
     float             boid_speed            = 0.1f;
     float             wall_distance         = 55.0f;
     float             avoid_wall_smoothness = 0.01f;
@@ -94,7 +95,7 @@ int main()
         }
     };
 
-    ////////// SETUP & CAMERA //////////
+    ////////// SETUP & CAMERA & LIGHTS //////////
 
     glm::mat4              ProjMatrix, MVMatrix, NormalMatrix;
     std::vector<glm::mat4> MV_transformations;
@@ -125,6 +126,14 @@ int main()
         asteroids_random_sizes.push_back(glm::linearRand(0.5f, 5.0f));
     }
 
+    glm::vec3 pointLightPos       = glm::vec3(0.0f);
+    glm::vec3 pointLightColor     = glm::vec3(1.0f, 1.0f, 1.0f);
+    float     pointLightIntensity = 10.0f;
+
+    glm::vec3 kd(1.0f);
+    glm::vec3 ks(0.4f);
+    float     shininess = 1.0f;
+
     glEnable(GL_DEPTH_TEST);
 
     ////////// APPLICATION LOOP //////////
@@ -135,26 +144,21 @@ int main()
 
         MV_transformations[0] = f_camera.getViewMatrix();
 
+        ////////// BACKGROUND //////////
+
         one_texture_program.m_Program.use();
         glUniform1i(one_texture_program.uTexture, 0);
         glActiveTexture(GL_TEXTURE0);
-
-        ////////// BACKGROUND //////////
-
-        glBindTexture(GL_TEXTURE_2D, textures[1]);
 
         glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
         glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
         glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
+        glBindTexture(GL_TEXTURE_2D, textures[1]);
         glBindVertexArray(vaos[2]);
         glDrawArrays(GL_TRIANGLES, 0, shapes[2].size());
 
         ////////// PLAYER //////////
-
-        (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
-
-        glBindTexture(GL_TEXTURE_2D, textures[0]);
 
         glm::vec3 playerPosition = f_camera.getPosition() + f_camera.getFront() * 3.0f - (f_camera.getUp() * 2.0f);
         glm::vec3 upVector(0.0f, 1.0f, 0.0f);
@@ -166,6 +170,8 @@ int main()
         glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[1]));
         glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
+        glBindTexture(GL_TEXTURE_2D, textures[0]);
+        (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
         (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
 
         ////////// BOIDS //////////
@@ -197,7 +203,6 @@ int main()
         ////////// ASTEROIDS //////////
 
         glBindTexture(GL_TEXTURE_2D, textures[2]);
-
         (low_quality ? glBindVertexArray(vaos[3]) : glBindVertexArray(vaos[4]));
 
         for (size_t i = 0; i < nb_asteroids; i++)
