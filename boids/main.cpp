@@ -156,9 +156,11 @@ int main()
 
         glBindTexture(GL_TEXTURE_2D, textures[0]);
 
-        glm::vec3 playerPosition = f_camera.getPosition();
-        MV_transformations[1]    = glm::translate(MV_transformations[0], playerPosition);
-        MV_transformations[1]    = glm::scale(MV_transformations[1], glm::vec3(0.1f));
+        glm::vec3 playerPosition = f_camera.getPosition() + f_camera.getFront() * 3.0f - (f_camera.getUp() * 2.0f);
+        glm::vec3 upVector(0.0f, 1.0f, 0.0f);
+        glm::quat rotation    = glm::rotation(upVector, f_camera.getFront());
+        MV_transformations[1] = glm::translate(MV_transformations[0], playerPosition);
+        MV_transformations[1] *= glm::mat4_cast(rotation);
 
         glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[1]));
         glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[1]));

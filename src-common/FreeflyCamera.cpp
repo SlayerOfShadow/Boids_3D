@@ -56,3 +56,8 @@ glm::vec3 FreeflyCamera::getFront() const
 {
     return m_FrontVector;
 }
+
+glm::vec3 FreeflyCamera::getUp() const
+{
+    return m_UpVector;
+}
