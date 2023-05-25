@@ -128,9 +128,9 @@ int main()
 
     glm::vec3 pointLightPos       = glm::vec3(0.0f);
     glm::vec3 pointLightColor     = glm::vec3(1.0f, 1.0f, 1.0f);
-    float     pointLightIntensity = 10.0f;
+    float     pointLightIntensity = 1.0f;
 
-    glm::vec3 kd(1.0f);
+    glm::vec3 kd(0.8f);
     glm::vec3 ks(0.4f);
     float     shininess = 1.0f;
 
@@ -159,6 +159,20 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, shapes[2].size());
 
         ////////// PLAYER //////////
+
+        /*
+        one_texture_light_program.m_Program.use();
+        glUniform1i(one_texture_light_program.uTexture, 0);
+        glActiveTexture(GL_TEXTURE0);
+
+        glUniform3fv(one_texture_light_program.m_uPointLightPos_vs, 1, glm::value_ptr(glm::vec3(f_camera.getViewMatrix() * glm::vec4(pointLightPos, 1))));
+        glUniform3fv(one_texture_light_program.m_uPointLightColor, 1, glm::value_ptr(pointLightColor));
+        glUniform1fv(one_texture_light_program.m_uPointLightIntensity, 1, &pointLightIntensity);
+
+        glUniform3fv(one_texture_light_program.m_uKd, 1, glm::value_ptr(kd));
+        glUniform3fv(one_texture_light_program.m_uKs, 1, glm::value_ptr(ks));
+        glUniform1f(one_texture_light_program.m_uShininess, shininess);
+        */
 
         glm::vec3 playerPosition = f_camera.getPosition() + f_camera.getFront() * 3.0f - (f_camera.getUp() * 2.0f);
         glm::vec3 upVector(0.0f, 1.0f, 0.0f);
