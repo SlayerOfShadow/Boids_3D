@@ -8,6 +8,9 @@ uniform vec3 uKd;
 uniform vec3 uKs;
 uniform float uShininess;
 
+uniform vec3 uDirLightDir_vs;
+uniform vec3 uDirLightColor;
+
 uniform vec3 uPointLightPos_vs;
 uniform vec3 uPointLightColor;
 uniform float uPointLightIntensity;
@@ -21,13 +24,26 @@ vec3 blinnPhongPoint(vec3 position, vec3 normal, vec3 kd, vec3 ks, float shinine
     vec3 viewDir = normalize(- position);
     vec3 lightDir = normalize(uLightPos_vs - position);
     float distanceToLight = length(uLightPos_vs - position);
-    vec3 attenuatedLightIntensity = uLightIntensity / (distanceToLight * distanceToLight);
+    //vec3 attenuatedLightIntensity = uLightIntensity / (distanceToLight * distanceToLight);
+    vec3 attenuatedLightIntensity = uLightIntensity / (distanceToLight);
     vec3 halfVector = normalize(lightDir + viewDir);
 
     float diffuse = max(0.0, dot(normal, lightDir));
     float specular = pow(max(0.0, dot(normal, halfVector)), shininess);
 
-    return kd * attenuatedLightIntensity * diffuse + ks * attenuatedLightIntensity * specular;
+    //return kd * attenuatedLightIntensity * diffuse + ks * attenuatedLightIntensity * specular;
+    return kd * attenuatedLightIntensity * 1.0f + ks * attenuatedLightIntensity * 0.1f;
+}
+
+vec3 blinnPhongDir(vec3 position, vec3 normal, vec3 lightDir, vec3 lightIntensity, vec3 kd, vec3 ks, float shininess) 
+{
+    vec3 viewDir = normalize(-position);
+    vec3 halfVector = normalize(lightDir + viewDir);
+
+    float diffuse = max(0.0, dot(normal, lightDir));
+    float specular = pow(max(0.0, dot(normal, halfVector)), shininess);
+
+    return kd * lightIntensity * diffuse + ks * lightIntensity * specular;
 }
 
 void main() 
@@ -36,7 +52,10 @@ void main()
     vec3 diffuseColor = texture.xyz;
 
     vec3 normal = normalize(vNormal_vs);
+    vec3 lightDir = normalize(uDirLightDir_vs);
+
     vec3 color = blinnPhongPoint(vPosition_vs, normal, uKd, uKs, uShininess, uPointLightIntensity * uPointLightColor, uPointLightPos_vs);
+    color += blinnPhongDir(vPosition_vs, normal, lightDir, uDirLightColor, uKd, uKs, uShininess);
 
     fFragColor = vec4(color * diffuseColor, texture.w);
 }

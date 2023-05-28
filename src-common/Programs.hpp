@@ -36,6 +36,9 @@ struct OneTextureLightProgram {
     GLint m_uPointLightIntensity;
     GLint m_uPointLightColor;
 
+    GLuint m_uDirLightDir_vs;
+    GLuint m_uDirLightColor;
+
     OneTextureLightProgram()
         : m_Program{p6::load_shader("shaders/3D.vs.glsl", "shaders/tex3DLight.fs.glsl")}
     {
@@ -49,5 +52,7 @@ struct OneTextureLightProgram {
         m_uPointLightPos_vs    = glGetUniformLocation(m_Program.id(), "uPointLightPos_vs");
         m_uPointLightColor     = glGetUniformLocation(m_Program.id(), "uPointLightColor");
         m_uPointLightIntensity = glGetUniformLocation(m_Program.id(), "uPointLightIntensity");
+        m_uDirLightDir_vs      = glGetUniformLocation(m_Program.id(), "uDirLightDir_vs");
+        m_uDirLightColor       = glGetUniformLocation(m_Program.id(), "uDirLightColor");
     }
 };

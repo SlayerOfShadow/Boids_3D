@@ -6,6 +6,7 @@
 #include "Boid.hpp"
 #include "FreeflyCamera.hpp"
 #include "GLFW/glfw3.h"
+#include "Lights.hpp"
 #include "Programs.hpp"
 #include "Setup.hpp"
 #include "Utilities.hpp"
@@ -126,9 +127,10 @@ int main()
         asteroids_random_sizes.push_back(glm::linearRand(0.5f, 5.0f));
     }
 
-    glm::vec3 pointLightPos       = glm::vec3(0.0f);
-    glm::vec3 pointLightColor     = glm::vec3(1.0f, 1.0f, 1.0f);
-    float     pointLightIntensity = 1.0f;
+    PointLight pointLight(glm::vec3(-100.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 80.0f);
+
+    DirectionalLight directionalLight(glm::vec3(1.0f), glm::vec3(0.0f));
+    bool             dirLight = false;
 
     glm::vec3 kd(0.8f);
     glm::vec3 ks(0.4f);
@@ -146,33 +148,9 @@ int main()
 
         ////////// BACKGROUND //////////
 
-        one_texture_program.m_Program.use();
-        glUniform1i(one_texture_program.uTexture, 0);
-        glActiveTexture(GL_TEXTURE0);
-
-        glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[0]));
-        glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[0]));
-        glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-
-        glBindTexture(GL_TEXTURE_2D, textures[1]);
-        glBindVertexArray(vaos[2]);
-        glDrawArrays(GL_TRIANGLES, 0, shapes[2].size());
+        drawOneTexture(one_texture_program, textures[1], shapes[2], vaos[2], ProjMatrix * MV_transformations[0], MV_transformations[0], NormalMatrix);
 
         ////////// PLAYER //////////
-
-        /*
-        one_texture_light_program.m_Program.use();
-        glUniform1i(one_texture_light_program.uTexture, 0);
-        glActiveTexture(GL_TEXTURE0);
-
-        glUniform3fv(one_texture_light_program.m_uPointLightPos_vs, 1, glm::value_ptr(glm::vec3(f_camera.getViewMatrix() * glm::vec4(pointLightPos, 1))));
-        glUniform3fv(one_texture_light_program.m_uPointLightColor, 1, glm::value_ptr(pointLightColor));
-        glUniform1fv(one_texture_light_program.m_uPointLightIntensity, 1, &pointLightIntensity);
-
-        glUniform3fv(one_texture_light_program.m_uKd, 1, glm::value_ptr(kd));
-        glUniform3fv(one_texture_light_program.m_uKs, 1, glm::value_ptr(ks));
-        glUniform1f(one_texture_light_program.m_uShininess, shininess);
-        */
 
         glm::vec3 playerPosition = f_camera.getPosition() + f_camera.getFront() * 3.0f - (f_camera.getUp() * 2.0f);
         glm::vec3 upVector(0.0f, 1.0f, 0.0f);
@@ -180,13 +158,7 @@ int main()
         MV_transformations[1] = glm::translate(MV_transformations[0], playerPosition);
         MV_transformations[1] *= glm::mat4_cast(rotation);
 
-        glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[1]));
-        glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[1]));
-        glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-
-        glBindTexture(GL_TEXTURE_2D, textures[0]);
-        (low_quality ? glBindVertexArray(vaos[0]) : glBindVertexArray(vaos[1]));
-        (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
+        drawOneTextureLight(one_texture_light_program, textures[0], shapes[0], shapes[1], vaos[0], vaos[1], ProjMatrix * MV_transformations[1], MV_transformations[1], NormalMatrix, low_quality, kd, ks, shininess, directionalLight, pointLight, dirLight, f_camera);
 
         ////////// BOIDS //////////
 
@@ -207,17 +179,10 @@ int main()
             glm::quat rotation = glm::rotation(upVector, direction);
             MV_transformations[i + 2] *= glm::mat4_cast(rotation);
 
-            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 2]));
-            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 2]));
-            glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-
-            (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[0].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[1].size()));
+            drawOneTextureLight(one_texture_light_program, textures[0], shapes[0], shapes[1], vaos[0], vaos[1], ProjMatrix * MV_transformations[i + 2], MV_transformations[i + 2], NormalMatrix, low_quality, kd, ks, shininess, directionalLight, pointLight, dirLight, f_camera);
         }
 
         ////////// ASTEROIDS //////////
-
-        glBindTexture(GL_TEXTURE_2D, textures[2]);
-        (low_quality ? glBindVertexArray(vaos[3]) : glBindVertexArray(vaos[4]));
 
         for (size_t i = 0; i < nb_asteroids; i++)
         {
@@ -225,11 +190,7 @@ int main()
             MV_transformations[i + 2 + nb_boids] = glm::scale(MV_transformations[i + 2 + nb_boids], glm::vec3(asteroids_random_sizes[i]));
             MV_transformations[i + 2 + nb_boids] = glm::rotate(MV_transformations[i + 2 + nb_boids], ctx.time() * asteroid_rotate_speed, asteroids_random_rotations[i]);
 
-            glUniformMatrix4fv(one_texture_program.uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MV_transformations[i + 2 + nb_boids]));
-            glUniformMatrix4fv(one_texture_program.uMVMatrix, 1, GL_FALSE, glm::value_ptr(MV_transformations[i + 2 + nb_boids]));
-            glUniformMatrix4fv(one_texture_program.uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-
-            (low_quality ? glDrawArrays(GL_TRIANGLES, 0, shapes[3].size()) : glDrawArrays(GL_TRIANGLES, 0, shapes[4].size()));
+            drawOneTextureLight(one_texture_light_program, textures[2], shapes[3], shapes[4], vaos[3], vaos[4], ProjMatrix * MV_transformations[i + 2 + nb_boids], MV_transformations[i + 2 + nb_boids], NormalMatrix, low_quality, kd, ks, shininess, directionalLight, pointLight, dirLight, f_camera);
         }
 
         ////////// INPUTS //////////
@@ -252,6 +213,15 @@ int main()
         if (ctx.key_is_pressed(GLFW_KEY_W))
         {
             f_camera.moveFront(0.1f, wall_distance);
+        }
+
+        if (ctx.key_is_pressed(GLFW_KEY_F))
+        {
+            dirLight = true;
+        }
+        else
+        {
+            dirLight = false;
         }
     };
 
