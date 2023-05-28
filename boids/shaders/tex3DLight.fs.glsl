@@ -24,15 +24,13 @@ vec3 blinnPhongPoint(vec3 position, vec3 normal, vec3 kd, vec3 ks, float shinine
     vec3 viewDir = normalize(- position);
     vec3 lightDir = normalize(uLightPos_vs - position);
     float distanceToLight = length(uLightPos_vs - position);
-    //vec3 attenuatedLightIntensity = uLightIntensity / (distanceToLight * distanceToLight);
     vec3 attenuatedLightIntensity = uLightIntensity / (distanceToLight);
     vec3 halfVector = normalize(lightDir + viewDir);
 
     float diffuse = max(0.0, dot(normal, lightDir));
     float specular = pow(max(0.0, dot(normal, halfVector)), shininess);
 
-    //return kd * attenuatedLightIntensity * diffuse + ks * attenuatedLightIntensity * specular;
-    return kd * attenuatedLightIntensity * 1.0f + ks * attenuatedLightIntensity * 0.1f;
+    return kd * attenuatedLightIntensity * 1.0f + ks * attenuatedLightIntensity * 1.0f;
 }
 
 vec3 blinnPhongDir(vec3 position, vec3 normal, vec3 lightDir, vec3 lightIntensity, vec3 kd, vec3 ks, float shininess) 
@@ -43,7 +41,7 @@ vec3 blinnPhongDir(vec3 position, vec3 normal, vec3 lightDir, vec3 lightIntensit
     float diffuse = max(0.0, dot(normal, lightDir));
     float specular = pow(max(0.0, dot(normal, halfVector)), shininess);
 
-    return kd * lightIntensity * diffuse + ks * lightIntensity * specular;
+    return kd * lightIntensity * 1.0f + ks * lightIntensity * 1.0f;
 }
 
 void main() 

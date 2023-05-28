@@ -127,7 +127,7 @@ int main()
         asteroids_random_sizes.push_back(glm::linearRand(0.5f, 5.0f));
     }
 
-    PointLight pointLight(glm::vec3(-100.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 80.0f);
+    PointLight pointLight(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 15.0f);
 
     DirectionalLight directionalLight(glm::vec3(1.0f), glm::vec3(0.0f));
     bool             dirLight = false;
