@@ -6,10 +6,11 @@ void Boid::move_boid()
     m_position += m_direction * m_speed;
 }
 
-void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& smooth)
+void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& smooth, const std::vector<glm::vec3>& asteroidPositions, const float& avoidanceRadius, const float& avoidanceForce)
 {
     glm::vec3 force(0.0f);
 
+    // Avoid walls
     if (m_position.x < min.x)
     {
         force.x = (min.x - m_position.x);
@@ -33,6 +34,17 @@ void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& 
     else if (m_position.z > max.z)
     {
         force.z = (max.z - m_position.z);
+    }
+
+    // Avoid asteroids
+    for (const glm::vec3& asteroidPos : asteroidPositions)
+    {
+        glm::vec3 toAsteroid = m_position - asteroidPos;
+        float     distance   = glm::length(toAsteroid);
+        if (distance < avoidanceRadius)
+        {
+            force += (avoidanceRadius - distance) * toAsteroid;
+        }
     }
 
     m_direction += force * smooth;

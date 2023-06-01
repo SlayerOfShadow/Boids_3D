@@ -70,7 +70,7 @@ int main()
     float             wall_distance         = 55.0f;
     float             avoid_wall_smoothness = 0.01f;
 
-    size_t nb_asteroids = 20;
+    size_t nb_asteroids = 50;
 
     float separation_distance = 5.0f;
     float alignement_distance = 5.0f;
@@ -165,7 +165,7 @@ int main()
         for (size_t i = 0; i < nb_boids; i++)
         {
             boids[i].move_boid();
-            boids[i].avoid_walls(glm::vec3(-wall_distance), glm::vec3(wall_distance), avoid_wall_smoothness);
+            boids[i].avoid_walls(glm::vec3(-wall_distance), glm::vec3(wall_distance), avoid_wall_smoothness, asteroids_random_positions, 10.0f, 1.0f);
             boids[i].update_boid(boid_size, boid_speed);
             boids[i].separate(boids, separation_distance, separation_strength);
             boids[i].align(boids, alignement_distance, alignement_strength);

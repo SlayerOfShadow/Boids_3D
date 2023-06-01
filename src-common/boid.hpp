@@ -21,7 +21,7 @@ public:
     // Methods
     void move_boid();
 
-    void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& smooth);
+    void Boid::avoid_walls(const glm::vec3& min, const glm::vec3& max, const float& smooth, const std::vector<glm::vec3>& asteroidPositions, const float& avoidanceRadius, const float& avoidanceForce);
 
     void update_boid(const float& size, const float& speed);
 
